@@ -1,6 +1,22 @@
 import socket
 
 
+def UDPSocket(sockport):
+    sock = socket.socket(
+        socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.bind(("0.0.0.0", sockport))
+    while True:
+        try:
+            message, _ = sock.recvfrom(2048)
+            print(message)
+            for ip in send_ips:
+                for port in map_ports[sockport]:
+                    sock.sendto(message, (ip, port))
+        except Exception as e:
+            print(e)
+
+
 """ LOAD CONFIG """
 
 CONFIG_FILE = []
@@ -9,13 +25,10 @@ try:
         CONFIG_FILE = f.readlines()
 except FileNotFoundError:
     with open("./UDPSplitter.cfg", 'w+') as f:
-        f.write("""~~~LISTEN IPS~~~
-~~~LISTEN PORTS~~~
-~~~SEND IPS~~~
+        f.write("""~~~SEND IPS~~~
 ~~~MAP PORTS~~~""")
     quit()
 
-listen_ports = []
 send_ips = []
 map_ports = dict()
 
@@ -24,16 +37,12 @@ for line in CONFIG_FILE:
     line = line.replace('\n', "")
     if line.startswith("#"):
         continue
-    elif line == "~~~LISTEN PORTS~~~":
-        stage = "listenPORT"
     elif line == "~~~SEND IPS~~~":
         stage = "sendIP"
     elif line == "~~~MAP PORTS~~~":
         stage = "mapPORT"
     else:
         match stage:
-            case "listenPORT":
-                listen_ports.append(line)
             case "sendIP":
                 send_ips.append(line)
             case "mapPORT":
@@ -42,3 +51,5 @@ for line in CONFIG_FILE:
                     map_ports[fromPort].append(toPort)
                 except:
                     map_ports[fromPort] = [toPort]
+
+UDPSocket(25545)
