@@ -1,1 +1,4 @@
 UDPSplitter.cfg
+
+dist/*
+build/*
