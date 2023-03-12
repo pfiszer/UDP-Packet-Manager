@@ -28,4 +28,3 @@ In order to allow traffic from one port to another add them to the `~~~MAP PORTS
 
 `from>to`
 
-**NOTE:** You cannot send to a port on localhost that is being used by this application
