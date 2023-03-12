@@ -26,8 +26,15 @@ try:
         CONFIG_FILE = f.readlines()
 except FileNotFoundError:
     with open("./UDPSplitter.cfg", 'w+') as f:
-        f.write("""~~~SEND IPS~~~
-~~~MAP PORTS~~~""")
+        f.write("""#Always receives at localhost
+~~~SEND IPS~~~
+#Add ip addresses where to send traffic
+#DO NOT add quotes or any unrelated characters
+localhost
+~~~MAP PORTS~~~
+#Add port mappings for the program
+#Use template: port_from>port_to
+8080>80""")
     quit()
 
 send_ips = []
