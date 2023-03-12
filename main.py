@@ -1,6 +1,5 @@
-import socket
 from multiprocessing import Process, freeze_support
-freeze_support()
+import socket
 
 
 def UDPSocket(sockport):
@@ -18,6 +17,9 @@ def UDPSocket(sockport):
                     sock.sendto(message, (ip, port))
         except Exception as e:
             pass
+
+
+freeze_support()
 
 
 if __name__ == '__main__':
