@@ -2,7 +2,7 @@ from multiprocessing import Process, freeze_support
 import socket
 
 
-def UDPSocket(sockport):
+def UDPSocket(sockport, send_ips, map_ports):
     # Create a socket
     sock = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -67,7 +67,8 @@ localhost
                         map_ports[fromPort] = [toPort]
 
     for port in map_ports:
-        processess.append(Process(target=UDPSocket, args=[port], daemon=True))
+        processess.append(Process(target=UDPSocket, args=[
+                          port, send_ips, map_ports], daemon=True))
         processess[-1].start()
 
     for process in processess:
