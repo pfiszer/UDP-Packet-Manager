@@ -2,3 +2,5 @@ UDPSplitter.cfg
 
 dist/*
 build/*
+
+*.spec
