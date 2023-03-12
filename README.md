@@ -22,9 +22,9 @@ localhost
 
 ---
 
-In order to send traffic to a specific ip, add it under the `\~~~SEND IPS~~~` section.
+In order to send traffic to a specific ip, add it under the `~~~SEND IPS~~~` section.
 
-In order to allow traffic from one port to another add them to the `\~~~MAP PORTS~~~` section using the template below.
+In order to allow traffic from one port to another add them to the `~~~MAP PORTS~~~` section using the template below.
 
 `from>to`
 
