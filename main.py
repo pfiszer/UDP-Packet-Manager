@@ -1,4 +1,5 @@
 import socket
+from multiprocessing import Process
 
 
 def UDPSocket(sockport):
@@ -31,6 +32,7 @@ except FileNotFoundError:
 
 send_ips = []
 map_ports = dict()
+processess = []
 
 stage = None
 for line in CONFIG_FILE:
@@ -52,4 +54,6 @@ for line in CONFIG_FILE:
                 except:
                     map_ports[fromPort] = [toPort]
 
-UDPSocket(25545)
+for port in map_ports:
+    processess.append(Process(target=UDPSocket, args=[port], daemon=True))
+    processess[-1].run()
