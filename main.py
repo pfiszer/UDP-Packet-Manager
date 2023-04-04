@@ -1,8 +1,9 @@
 from multiprocessing import Process, freeze_support
 import socket
+map_ports = dict()
 
 
-def UDPSocket(sockport, send_ips, map_ports):
+def UDPSocket(sockport, map_ports):
     # Create a socket
     sock = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -12,11 +13,36 @@ def UDPSocket(sockport, send_ips, map_ports):
     while True:
         try:
             message, _ = sock.recvfrom(2048)
-            for ip in send_ips:
-                for port in map_ports[sockport]:
-                    sock.sendto(message, (ip, port))
+            for ip in map_ports[sockport]:
+                sock.sendto(message, (ip, map_ports[sockport][ip]))
         except Exception as e:
             pass
+
+
+def convertConfig(port_cfg: str):
+    inp, out = port_cfg.split(">")
+    ip, port = out.split(":")
+    return int(inp), ip, int(port)
+
+
+def mapPort(fromPort: int, ip: str, toPort: int, resetIP=False):
+    global map_ports
+    if resetIP:
+        for port in map_ports:
+            try:
+                del map_ports[port][ip]
+            except KeyError:
+                pass
+    try:
+        map_ports[fromPort][ip] += [toPort]
+    except KeyError:
+        try:
+            map_ports[fromPort][ip] = []
+            map_ports[fromPort][ip] += [toPort]
+        except KeyError:
+            map_ports[fromPort] = dict()
+            map_ports[fromPort][ip] = []
+            map_ports[fromPort][ip] += [toPort]
 
 
 freeze_support()
@@ -32,43 +58,32 @@ if __name__ == '__main__':
     except FileNotFoundError:
         with open("./UDPSplitter.cfg", 'w+') as f:
             f.write("""#Always receives at localhost
-~~~SEND IPS~~~
-#Add ip addresses where to send traffic
-#DO NOT add quotes or any unrelated characters
-localhost
+
 ~~~MAP PORTS~~~
-#Add port mappings for the program
-#Use template: port_from>port_to
-8080>80""")
+#Map ports to outgoing ips and ports
+#Use template: port_from>ip_to:port_to
+8080>localhost:80""")
         quit()
 
-    send_ips = []
-    map_ports = dict()
     processess = []
 
     stage = None
     for line in CONFIG_FILE:
         line = line.replace('\n', "")
-        if line.startswith("#"):
+        if line.startswith("#") or line == "":
             continue
-        elif line == "~~~SEND IPS~~~":
-            stage = "sendIP"
         elif line == "~~~MAP PORTS~~~":
             stage = "mapPORT"
-        else:
-            match stage:
-                case "sendIP":
-                    send_ips.append(line)
-                case "mapPORT":
-                    fromPort, toPort = map(int, line.split('>'))
-                    try:
-                        map_ports[fromPort].append(toPort)
-                    except:
-                        map_ports[fromPort] = [toPort]
-
+        elif stage == "mapPORT":
+            try:
+                fromPort, toIP, toPort = convertConfig(line)
+            except:
+                continue
+            mapPort(fromPort, toIP, toPort)
+    ''' START PROGRAM '''
     for port in map_ports:
         processess.append(Process(target=UDPSocket, args=[
-                          port, send_ips, map_ports], daemon=True))
+                          port, map_ports], daemon=True))
         processess[-1].start()
 
     for process in processess:
