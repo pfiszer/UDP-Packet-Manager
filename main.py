@@ -1,9 +1,8 @@
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process, freeze_support, Manager
 import socket
-map_ports = dict()
 
 
-def UDPSocket(sockport, map_ports):
+def UDPSocket(sockport):
     # Create a socket
     sock = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -30,19 +29,30 @@ def mapPort(fromPort: int, ip: str, toPort: int, resetIP=False):
     if resetIP:
         for port in map_ports:
             try:
-                del map_ports[port][ip]
+                delDict = map_ports[port]
+                del delDict[ip]
+                map_ports[port] = delDict
             except KeyError:
                 pass
     try:
-        map_ports[fromPort][ip] += [toPort]
+        sharedDict = map_ports[fromPort]
+    except KeyError:
+        map_ports[fromPort] = dict()
+        sharedDict = map_ports[fromPort]
+
+    try:
+        sharedDict[ip] += [toPort]
     except KeyError:
         try:
-            map_ports[fromPort][ip] = []
-            map_ports[fromPort][ip] += [toPort]
+            sharedDict[ip] = []
+            sharedDict[ip] += [toPort]
         except KeyError:
-            map_ports[fromPort] = dict()
-            map_ports[fromPort][ip] = []
-            map_ports[fromPort][ip] += [toPort]
+            sharedDict = dict()
+            sharedDict[ip] = []
+            sharedDict[ip] += [toPort]
+    finally:
+        map_ports[fromPort] = sharedDict
+        print(map_ports)
 
 
 freeze_support()
@@ -50,7 +60,9 @@ freeze_support()
 
 if __name__ == '__main__':
     """ LOAD CONFIG """
-
+    map_ports = Manager().dict()
+    incomingPort = 58212
+    dynamicConfig = True
     CONFIG_FILE = []
     try:
         with open("./UDPSplitter.cfg", 'r') as f:
@@ -79,12 +91,31 @@ if __name__ == '__main__':
                 fromPort, toIP, toPort = convertConfig(line)
             except:
                 continue
-            mapPort(fromPort, toIP, toPort)
+            mapPort(fromPort, toIP, toPort, True)
+        elif line.startswith("incomingPort="):
+            try:
+                incomingPort = int(line.split("=")[1])
+            except:
+                pass
     ''' START PROGRAM '''
     for port in map_ports:
         processess.append(Process(target=UDPSocket, args=[
                           port, map_ports], daemon=True))
         processess[-1].start()
+
+    if dynamicConfig:
+        ''' Listening for incoming config changes'''
+        sock = socket.socket(
+            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.bind(("0.0.0.0", incomingPort))
+        print(f"Listening for config on port: {incomingPort}.", flush=True)
+        while True:
+            try:
+                message, ip = sock.recvfrom(16)
+                print(message, ip)
+            except Exception as e:
+                pass
 
     for process in processess:
         process.join()
