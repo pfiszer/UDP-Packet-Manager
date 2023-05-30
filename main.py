@@ -185,7 +185,8 @@ def clearIP(ip: str):
 
 
 def saveConfig():
-    cfg = f"""## Config for the dynamic config of the ports
+    cfg = f"""maxPacketSize = {maxPacketSize}
+## Config for the dynamic config of the ports
 incomingPort = {incomingPort}
 #dynamicConfig = {dynamicConfig}
 #saveConfig = {saveConfig}
