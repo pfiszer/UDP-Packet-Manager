@@ -142,23 +142,16 @@ def UDPSocket(sockport, map_ports, packetSize):
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.bind(("0.0.0.0", sockport))
     print(f"Port: {sockport} is active.", flush=True)
-    logging.info(f"Port: {sockport} is active.")
-    i = 0
     while True:
         try:
             message, _ = sock.recvfrom(packetSize)
             for ip in map_ports[sockport]:
                 for port in map_ports[sockport][ip]:
                     sock.sendto(message, (ip, port))
-                    if not i % 1000:
-                        logging.debug(
-                            f"Message from {sockport} to {ip}:{port}")
-                        i = 0
         except WindowsError:
             pass
         except Exception as e:
             print(e, flush=True)
-            logging.error(e)
         i += 1
 
 
@@ -249,10 +242,11 @@ if __name__ == '__main__':
     map_ports = manager.dict()
     incomingPort = 53581
     dynamicConfig = False
-    debug = True
+    debug = False
     maxPacketSize = 2048
-    saveConfig = True
+    saveConfig = False
     CONFIG_FILE = []
+    logging.basicConfig(filename='latest.log', encoding='utf-8', level=logging.DEBUG if debug else logging.INFO, filemode="a", format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     try:
         with open("./UDPSplitter.cfg", 'r') as f:
             CONFIG_FILE = f.readlines()
@@ -316,16 +310,16 @@ if __name__ == '__main__':
                         debug = False
             except:
                 pass
+
         elif stage == "mapPORT":
             try:
                 fromPort, toIP, toPort = convertConfig(line)
             except:
                 continue
             mapPort(fromPort, toIP, toPort)
-    loglevel = logging.INFO if not debug else logging.DEBUG
-    logging.basicConfig(filename='latest.log',
-                        encoding='utf-8', level=loglevel, filemode="a", format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     logging.info("CONFIG LOADED")
+    print("CONFIG LOADED")
 
     ''' START PROGRAM '''
 
@@ -338,8 +332,8 @@ if __name__ == '__main__':
 
     if debug:
         webServer = HTTPServer(("0.0.0.0", incomingPort+1), MyServer)
-        print(f"Listening for config on port: {incomingPort+1}.", flush=True)
-        logging.info(f"Dynamic config starting at port {incomingPort}.")
+        print(f"Debug on port: {incomingPort}.", flush=True)
+        logging.info(f"Debug on port: {incomingPort}.")
         Thread(target=webServer.serve_forever).start()
 
     if dynamicConfig:

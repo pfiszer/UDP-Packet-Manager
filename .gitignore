@@ -6,3 +6,8 @@ build/*
 *.spec
 *.log
 __pycache__/*
+
+Scripts/
+Include/
+Lib/
+pyvenv.cfg
