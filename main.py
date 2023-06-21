@@ -4,8 +4,18 @@ import logging
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
-
-class MyServer(BaseHTTPRequestHandler):
+class ConfigServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        try:
+            with open("default_config.json", "rb") as configFile:
+                message = configFile.read()
+        except:
+            message = b""
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(message)
+class DebugServer(BaseHTTPRequestHandler):
     def do_GET(self):
         logging.info(f"{self.requestline} {self.path} {self.headers._headers}")
         global map_ports
@@ -181,9 +191,11 @@ def saveConfig():
     cfg = f"""maxPacketSize = {maxPacketSize}
 ## Config for the dynamic config of the ports
 incomingPort = {incomingPort}
-#dynamicConfig = {dynamicConfig}
-#saveConfig = {saveConfig}
-#debug = {debug}
+dynamicConfig = {dynamicConfig}
+saveConfig = {saveConfig}
+debug = {debug}
+debugPort = {debugPort}
+sharedConfigPort = {sharedConfigPort}
 ~~~MAP PORTS~~~
 #Map ports to outgoing ips and ports
 #Use template: port_from>ip_to:port_to
@@ -193,16 +205,17 @@ incomingPort = {incomingPort}
         for ip in map_ports[port]:
             for outport in map_ports[port][ip]:
                 cfg += f"{port}>{ip}:{outport}\n"
-    with open("./UDPSplitter.cfg", "w+") as f:
+    with open("./config.cfg", "w+") as f:
         f.write(cfg)
     pass
 
 
-def mapPort(fromPort: int, ip: str | None, toPort: int | None):
+def mapPort(fromPort: int, ip: str | None, toPort: int | None, stage=None):
     global map_ports
 
-    if ip == None or toPort == None:
+    if (ip == None or toPort == None) and (stage != "config"):
         return
+
     try:
         sharedDict = map_ports[fromPort]
         logging.debug(f"Port {fromPort} extracted")
@@ -211,6 +224,8 @@ def mapPort(fromPort: int, ip: str | None, toPort: int | None):
         sharedDict = map_ports[fromPort]
         logging.debug(f"Port {fromPort} extracted after error")
 
+    if ip == None or toPort == None:
+        return
     try:
         sharedDict[ip] += [toPort]
         logging.debug(f"IP {ip} and port {toPort} added to {fromPort}")
@@ -243,25 +258,29 @@ if __name__ == '__main__':
     incomingPort = 53581
     dynamicConfig = False
     debug = False
+    debugPort = 53582
+    sharedConfigPort = None
     maxPacketSize = 2048
     saveConfig = False
     CONFIG_FILE = []
     logging.basicConfig(filename='latest.log', encoding='utf-8', level=logging.DEBUG if debug else logging.INFO, filemode="a", format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     try:
-        with open("./UDPSplitter.cfg", 'r') as f:
+        with open("./config.cfg", 'r') as f:
             CONFIG_FILE = f.readlines()
     except FileNotFoundError:
-        with open("./UDPSplitter.cfg", 'w+') as f:
+        with open("./config.cfg", 'w+') as f:
             f.write("""#maxPacketSize = 2048
 ## Config for the dynamic config of the ports
-#incomingPort = 58212
+#incomingPort =
 #dynamicConfig = False
 #saveConfig = False
 #debug = False
+#debugPort =
+#sharedConfigPort =
 ~~~MAP PORTS~~~
 #Map ports to outgoing ips and ports
 #Use template: port_from>ip_to:port_to
-#8080>localhost:80""")
+#161>localhost:616""")
         quit()
 
     processess = []
@@ -269,44 +288,55 @@ if __name__ == '__main__':
     stage = None
     for line in CONFIG_FILE:
         line = line.replace('\n', "")
+        line = line.replace(" ",'')
         if line.startswith("#") or line == "":
             continue
-        elif line == "~~~MAP PORTS~~~":
+        elif line == "~~~MAPPORTS~~~":
             stage = "mapPORT"
-        elif line.startswith("debugPort="):
+        elif line.startswith("incomingPort="):
             try:
                 incomingPort = int(line.split("=")[1])
             except:
                 pass
-        elif line.startswith("maxPacketSize ="):
+        elif line.startswith("debugPort="):
+            try:
+                debugPort = int(line.split("=")[1])
+            except:
+                pass
+        elif line.startswith("sharedConfigPort="):
+            try:
+                sharedConfigPort = int(line.split("=")[1])
+            except:
+                pass
+        elif line.startswith("maxPacketSize="):
             try:
                 maxPacketSize = int(line.split("=")[1])
             except:
                 pass
-        elif line.startswith("dynamicConfig ="):
+        elif line.startswith("dynamicConfig="):
             try:
-                match line.split("=")[1].strip():
-                    case "True":
+                match line.split("=")[1].strip().lower():
+                    case "true":
                         dynamicConfig = True
-                    case "False":
+                    case "false":
                         dynamicConfig = False
             except:
                 pass
-        elif line.startswith("saveConfig ="):
+        elif line.startswith("saveConfig="):
             try:
-                match line.split("=")[1].strip():
-                    case "True":
+                match line.split("=")[1].strip().lower():
+                    case "true":
                         saveConfig = True
-                    case "False":
+                    case "false":
                         saveConfig = False
             except:
                 pass
-        elif line.startswith("debug ="):
+        elif line.startswith("debug="):
             try:
-                match line.split("=")[1].strip():
-                    case "True":
+                match line.split("=")[1].strip().lower():
+                    case "true":
                         debug = True
-                    case "False":
+                    case "false":
                         debug = False
             except:
                 pass
@@ -316,7 +346,7 @@ if __name__ == '__main__':
                 fromPort, toIP, toPort = convertConfig(line)
             except:
                 continue
-            mapPort(fromPort, toIP, toPort)
+            mapPort(fromPort, toIP, toPort,stage="config")
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     logging.info("CONFIG LOADED")
     print("CONFIG LOADED")
@@ -331,10 +361,16 @@ if __name__ == '__main__':
     logging.info("Listening processes started.")
 
     if debug:
-        webServer = HTTPServer(("0.0.0.0", incomingPort+1), MyServer)
-        print(f"Debug on port: {incomingPort}.", flush=True)
-        logging.info(f"Debug on port: {incomingPort}.")
-        Thread(target=webServer.serve_forever).start()
+        webServer = HTTPServer(("0.0.0.0", debugPort), DebugServer)
+        print(f"Debug on port: {debugPort}.", flush=True)
+        logging.info(f"Debug on port: {debugPort}.")
+        Thread(target=webServer.serve_forever, daemon=True).start()
+
+    if sharedConfigPort is not None:
+        cfgServer = HTTPServer(("0.0.0.0", sharedConfigPort), ConfigServer)
+        print(f"Client config on port: {sharedConfigPort}.", flush=True)
+        logging.info(f"Client config on port: {sharedConfigPort}.")
+        Thread(target=cfgServer.serve_forever, daemon=True).start()
 
     if dynamicConfig:
 
@@ -362,14 +398,18 @@ if __name__ == '__main__':
                     message = f"IP address {ip} has been cleared"
                     logging.debug(f"IP address {ip} has been cleared")
                 elif ports[0] == "config":
-                    try:
-                        with open("default_config.txt", "rb") as configFile:
-                            message = "⛭" + configFile.read()
-                    except:
-                        message = "⛭"
+                    message = f"⛭{sharedConfigPort}" if sharedConfigPort != None else "⛭"
+                elif ports[0] == "connect":
+                    message = "connected"
+                elif ports[0] == "active":
+                    message = "|"
+                    for port in map_ports:
+                        if ip in map_ports[port]:
+                            for _outPort in map_ports[port][ip]:
+                                message += f"{port}>{_outPort}|"
                 else:
                     inPort = outPort = int(ports[0])
-                if inPort not in map_ports and ports[0] not in ["clear", "config"]:
+                if inPort not in map_ports and ports[0] not in ["clear", "config","connect","active"]:
                     message = f"{inPort} is not a valid port"
                     inPort = None
                 if None not in [inPort, outPort]:
