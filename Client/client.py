@@ -81,8 +81,9 @@ async def connection():
             return True
 
 
-    def load_config(cfgJSON):
+    def load_config():
         global cfg
+        global cfgJSON
         opts = []
         for entry in cfgJSON:
             name = entry["name"]
@@ -132,6 +133,7 @@ async def connection():
 
     def listen(socket):
         global cfg
+        global cfgJSON
         while True:
             try:
                 message, _ = socket.recvfrom(2048)
@@ -140,13 +142,13 @@ async def connection():
                     try:
                         response = requests.get(url=f"http://{ip}:{msg[1:]}")
                         if response.status_code == 200:
-                            global cfgJSON
-                            cfgJSON += response.json()
-                            load_config(cfgJSON)
+                            cfgJSON = response.json()
+                            load_config()
                             with open("./config.json","w") as f:
                                 f.write(json.dumps(cfgJSON))
                     except Exception as e:
-                        pass
+                        print(e)
+                        print(response)
                 elif msg.startswith("|"):
                     current.clear()
                     if len(msg) == 1:

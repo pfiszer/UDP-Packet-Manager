@@ -162,7 +162,6 @@ def UDPSocket(sockport, map_ports, packetSize):
             pass
         except Exception as e:
             print(e, flush=True)
-        i += 1
 
 
 def convertConfig(port_cfg: str):
@@ -192,7 +191,7 @@ def saveConfig():
 ## Config for the dynamic config of the ports
 incomingPort = {incomingPort}
 dynamicConfig = {dynamicConfig}
-saveConfig = {saveConfig}
+saveConfig = {save_config}
 debug = {debug}
 debugPort = {debugPort}
 sharedConfigPort = {sharedConfigPort}
@@ -244,7 +243,7 @@ def mapPort(fromPort: int, ip: str | None, toPort: int | None, stage=None):
     finally:
         map_ports[fromPort] = sharedDict
         logging.debug(f"{fromPort} updated with {sharedDict}")
-        if saveConfig:
+        if save_config:
             saveConfig()
 
 
@@ -261,7 +260,7 @@ if __name__ == '__main__':
     debugPort = 53582
     sharedConfigPort = None
     maxPacketSize = 2048
-    saveConfig = False
+    save_config = False
     CONFIG_FILE = []
     logging.basicConfig(filename='latest.log', encoding='utf-8', level=logging.DEBUG if debug else logging.INFO, filemode="a", format='[%(asctime)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     try:
@@ -326,9 +325,9 @@ if __name__ == '__main__':
             try:
                 match line.split("=")[1].strip().lower():
                     case "true":
-                        saveConfig = True
+                        save_config = True
                     case "false":
-                        saveConfig = False
+                        save_config = False
             except:
                 pass
         elif line.startswith("debug="):
