@@ -5,6 +5,10 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigServer(BaseHTTPRequestHandler):
+    def __init__(self, map_ports):
+        self.map_ports = map_ports
+        super().__init__(self)
+
     def do_GET(self):
         try:
             with open("default_config.json", "rb") as configFile:

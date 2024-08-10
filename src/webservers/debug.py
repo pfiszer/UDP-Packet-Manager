@@ -1,8 +1,17 @@
+import logging
+from http.server import BaseHTTPRequestHandler
+
+from libs.portmapper import mapPort
+
+logger = logging.getLogger(__name__)
+
+
 class DebugServer(BaseHTTPRequestHandler):
+    map_ports = dict()
+
     def do_GET(self):
         logging.info(f"{self.requestline} {self.path} {self.headers._headers}")
-        global map_ports
-        ports = dict(map_ports)
+        ports = dict(self.map_ports)
         match self.path:
             case "/ports":
                 self.send_response(200)
@@ -47,7 +56,7 @@ class DebugServer(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
                 self.end_headers()
-                with open("latest.log", "r") as res:
+                with open("UDPManager.log", "r") as res:
                     self.wfile.write(
                         bytes(res.read(), "utf-8"))
 
@@ -122,7 +131,8 @@ class DebugServer(BaseHTTPRequestHandler):
         if message["ip"] == None:
             message["ip"] = self.client_address[0]
 
-        mapPort(message["inport"], message["ip"], message["outport"])
+        mapPort(message["inport"], message["ip"],
+                message["outport"], self.map_ports)
         self.send_response(302)
         self.send_header('Location', "/ports")
         self.end_headers()

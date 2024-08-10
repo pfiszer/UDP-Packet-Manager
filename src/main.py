@@ -54,7 +54,7 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     logname = "UDPManager.log"
     file_handler = TimedRotatingFileHandler(
-        logname, when="S", interval=30, backupCount=30, encoding='utf-8')
+        logname, when="midnight", backupCount=30, encoding='utf-8')
     file_handler.suffix = "%Y-%m-%d.log"
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -92,13 +92,17 @@ if __name__ == '__main__':
     logger.info("Listening processes started.")
 
     if CONFIG["debug"]:
-        webServer = HTTPServer(("0.0.0.0", CONFIG["debugPort"]), DebugServer)
+        debug = DebugServer
+        debug.map_ports = map_ports
+        webServer = HTTPServer(("0.0.0.0", CONFIG["debugPort"]), debug)
         logger.info(f'Debug on port: {CONFIG["debugPort"]}.')
         Thread(target=webServer.serve_forever, daemon=True).start()
 
     if CONFIG["dynamicConfig"]:
+        configsrv = ConfigServer
+        configsrv.map_ports = map_ports
         cfgServer = HTTPServer(
-            ("0.0.0.0", CONFIG["sharedConfigPort"]), ConfigServer)
+            ("0.0.0.0", CONFIG["sharedConfigPort"]), configsrv)
         logger.info(f'Client config on port: {CONFIG["sharedConfigPort"]}.')
         Thread(target=cfgServer.serve_forever, daemon=True).start()
 
