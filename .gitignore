@@ -12,3 +12,4 @@ Lib/
 share/
 etc/
 temp.py
+default_config.json
