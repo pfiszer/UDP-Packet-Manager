@@ -9,6 +9,7 @@ from threading import Thread
 from libs.configparser import parse
 from libs.portmapper import mapPort, clearIP
 from webservers.debug import DebugServer
+from webservers.config import ConfigServer
 
 
 def UDPSocket(sockport, map_ports, packetSize):
@@ -102,62 +103,63 @@ if __name__ == '__main__':
         configsrv = ConfigServer
         configsrv.map_ports = map_ports
         cfgServer = HTTPServer(
-            ("0.0.0.0", CONFIG["sharedConfigPort"]), configsrv)
-        logger.info(f'Client config on port: {CONFIG["sharedConfigPort"]}.')
+            ("0.0.0.0", CONFIG["dynamicConfigPort"]), configsrv)
+        logger.info(f'Client config on port: {CONFIG["dynamicConfigPort"]}.')
         Thread(target=cfgServer.serve_forever, daemon=True).start()
 
-        ''' Listening for incoming config changes'''
-        sock = socket.socket(
-            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.bind(("0.0.0.0", CONFIG["sharedConfigPort"]))
-        logger.info(
-            f'Dynamic config started at port {CONFIG["sharedConfigPort"]}.')
+        # ''' Listening for incoming config changes'''
+        # sock = socket.socket(
+        #     socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        # sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        # sock.bind(("0.0.0.0", CONFIG["dynamicConfigPort"]))
+        # logger.info(
+        #     f'Dynamic config started at port {CONFIG["dynamicConfigPort"]}.')
 
-        while True:
-            message = ""
-            inPort = outPort = None
-            try:
-                message, addr = sock.recvfrom(16)
-                ip = addr[0]
-                ports = message.decode('utf-8').split('>')
-                logger.debug(f"Message: {message} from address {addr}")
-                if len(ports) == 2:
-                    inPort, outPort = map(int, ports)
-                elif ports[0] == "clear":
-                    clearIP(ip, map_ports)
-                    message = f"IP address {ip} has been cleared"
-                    logger.debug(f"IP address {ip} has been cleared")
-                elif ports[0] == "config":
-                    message = f'⛭{CONFIG["sharedConfigPort"]}' if CONFIG["sharedConfigPort"] != None else "⛭"
-                elif ports[0] == "connect":
-                    message = "connected"
-                elif ports[0] == "active":
-                    message = "|"
-                    for port in map_ports:
-                        if ip in map_ports[port]:
-                            for _outPort in map_ports[port][ip]:
-                                message += f"{port}>{_outPort}|"
-                else:
-                    inPort = outPort = int(ports[0])
-                if inPort not in map_ports and ports[0] not in ["clear", "config", "connect", "active"]:
-                    message = f"{inPort} is not a valid port"
-                    inPort = None
-                if None not in [inPort, outPort]:
-                    mapPort(inPort, ip, outPort)
-                    logger.info(f"Port {inPort} mapped to {ip}:{outPort}")
-                    logger.debug(f"Current dict state: {map_ports}")
-                    message = f"Port {inPort} mapped to {ip}:{outPort}"
-            except ConnectionResetError:
-                pass
-            except Exception as e:
-                logger.error(e)
-                message = f"{e}"
+        # while True:
+        #     message = ""
+        #     inPort = outPort = None
+        #     try:
+        #         message, addr = sock.recvfrom(16)
+        #         ip = addr[0]
+        #         ports = message.decode('utf-8').split('>')
+        #         logger.debug(f"Message: {message} from address {addr}")
+        #         if len(ports) == 2:
+        #             inPort, outPort = map(int, ports)
+        #         elif ports[0] == "clear":
+        #             clearIP(ip, map_ports)
+        #             message = f"IP address {ip} has been cleared"
+        #             logger.debug(f"IP address {ip} has been cleared")
+        #         elif ports[0] == "config":
+        #             message = f'⛭{CONFIG["dynamicConfigPort"]}' if CONFIG["dynamicConfigPort"] != None else "⛭"
+        #         elif ports[0] == "connect":
+        #             message = "connected"
+        #         elif ports[0] == "active":
+        #             message = "|"
+        #             for port in map_ports:
+        #                 if ip in map_ports[port]:
+        #                     for _outPort in map_ports[port][ip]:
+        #                         message += f"{port}>{_outPort}|"
+        #         else:
+        #             inPort = outPort = int(ports[0])
+        #         if inPort not in map_ports and ports[0] not in ["clear", "config", "connect", "active"]:
+        #             message = f"{inPort} is not a valid port"
+        #             inPort = None
+        #         if None not in [inPort, outPort]:
+        #             mapPort(inPort, ip, outPort)
+        #             logger.info(f"Port {inPort} mapped to {ip}:{outPort}")
+        #             logger.debug(f"Current dict state: {map_ports}")
+        #             message = f"Port {inPort} mapped to {ip}:{outPort}"
+        #     except ConnectionResetError:
+        #         pass
+        #     except Exception as e:
+        #         logger.error(e)
+        #         message = f"{e}"
 
-            sock.sendto(bytes(message, "utf-8"), addr)
-            print(message)
+        #     sock.sendto(bytes(message, "utf-8"), addr)
+        #     print(message)
     try:
         while True:
             pass
     except KeyboardInterrupt:
+        print("EXIT")
         quit()
