@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('__main__')
 
 
 def parse(configFile: dict[str]):

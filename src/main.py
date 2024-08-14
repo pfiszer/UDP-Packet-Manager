@@ -25,7 +25,8 @@ def UDPSocket(sockport, map_ports, packetSize):
             for ip in map_ports[sockport]:
                 for port in map_ports[sockport][ip]:
                     sock.sendto(message, (ip, port))
-        except WindowsError:
+                    print(f"Msg to: {ip, port} ", flush=True)
+        except OSError:
             pass
         except Exception as e:
             print(e, flush=True)

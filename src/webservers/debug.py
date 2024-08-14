@@ -3,7 +3,7 @@ from http.server import BaseHTTPRequestHandler
 
 from libs.portmapper import mapPort
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('__main__')
 
 
 class DebugServer(BaseHTTPRequestHandler):
