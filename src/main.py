@@ -25,7 +25,6 @@ def UDPSocket(sockport, map_ports, packetSize):
             for ip in map_ports[sockport]:
                 for port in map_ports[sockport][ip]:
                     sock.sendto(message, (ip, port))
-                    print(f"Msg to: {ip, port} ", flush=True)
         except OSError:
             pass
         except Exception as e:
@@ -79,7 +78,7 @@ if __name__ == '__main__':
 
     CONFIG = parse(CONFIG_FILE)
     del CONFIG_FILE
-    [mapPort(f, i, t, map_ports=map_ports)
+    [mapPort(f, i, t, map_ports=map_ports, stage="config")
      for f, i, t in [j for j in CONFIG["ports"]]]
 
     processess = []
